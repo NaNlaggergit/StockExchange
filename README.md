@@ -1,5 +1,6 @@
 # StockExchange
 Обновление данных происходит через websocket.
+![Пример работы!](/StockExchange/Images/Example.png "")
 В коде использовались инструменты.
 1. .Net 8.0.12
 2. Winform
