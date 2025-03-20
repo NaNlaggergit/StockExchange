@@ -10,5 +10,7 @@ namespace StockExchange.Api
     internal class ExchangeRate
     {
         public decimal? LastPrice { get; set; }
+        public decimal? LowPriceH24 { get; set; }
+        public decimal? HighPriceH24 { get; set; }
     }
 }

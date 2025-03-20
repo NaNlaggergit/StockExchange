@@ -26,7 +26,10 @@ namespace StockExchange.Api
 
         private ExchangeRate CreateExchangeRate(Kucoin.Net.Objects.Models.Spot.KucoinTick data)
         {
-            return new ExchangeRate { LastPrice = data.LastPrice };
+            return new ExchangeRate
+            {
+                LastPrice = data.LastPrice,
+            };
         }
 
         public async Task<ExchangeRate> GetPriceAsync(string symbol)
@@ -41,11 +44,13 @@ namespace StockExchange.Api
             return null;
         }
 
-        public async Task SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
+        public async Task<Result> SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
         {
+            Result result=new Result();
             if(_subscriptionId != null)
             {
-                return;
+                result.Error = "Уже подписанны";
+                return result;
             }
 
             var subscription = await _socketClient.SpotApi.SubscribeToTickerUpdatesAsync(symbol, data =>
@@ -55,8 +60,18 @@ namespace StockExchange.Api
 
             if (subscription.Success)
             {
+                result.IsSuccess = true;
                 _subscriptionId = subscription.Data.Id;
+                return result;
             }
+
+            else
+            {
+                result.Error = subscription.Error.Message;
+                _subscriptionId = null;
+                return result;
+            }
+
         }
 
         public async Task UnsubscribeFromPriceUpdatesAsync()

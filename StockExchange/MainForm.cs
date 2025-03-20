@@ -1,5 +1,7 @@
 ﻿using StockExchange.Api;
 using StockExchange.Api.StockExchange.Api;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace StockExchange
 {
@@ -28,10 +30,12 @@ namespace StockExchange
 
         private void buttonStart_Click(object sender, EventArgs e)
         {
+            Debug.WriteLine("sdfdfgd");
             if (_isUpdating)
             {
                 unsubscribe();
-            } else
+            }
+            else
             {
                 subscribe();
             }
@@ -56,36 +60,46 @@ namespace StockExchange
             var selectedFirst = comboBoxSymbolOne.SelectedItem.ToString();
             var selectedSecond = comboBoxSymbolTwo.SelectedItem.ToString();
             dataGridViewRates.Rows.Clear();
-            var tasks = new List<Task>();
+            var tasks = new List<Task<Result>>();
             foreach (var client in _exchangeClients)
             {
                 var newSymbol = ConcatSymbol(selectedFirst, selectedSecond, client.GetType().Name);
                 var task = client.SubscribeToPriceUpdatesAsync(newSymbol, exchangeRate =>
-                {
+                {   
                     this.Invoke((MethodInvoker)delegate
                     {
-                        UpdateDataGridView(client.GetType().Name, newSymbol, exchangeRate.LastPrice);
+                        UpdateDataGridView(client.GetType().Name, newSymbol, exchangeRate);
                     });
                 });
+
                 tasks.Add(task);
             }
-
             await Task.WhenAll(tasks.ToArray());
+            for (int i=0; i<tasks.Count;i++) 
+            {
+                if (!tasks[i].Result.IsSuccess)
+                {
+                    textBox1.AppendText($"{_exchangeClients[i].GetType().Name}:\r\n" + tasks[i].Result.Error + "\r\n");
+                }
+            }
             buttonStart.Text = "Stop";
             buttonStart.Enabled = true;
         }
 
-        private void UpdateDataGridView(string exchange, string symbol, decimal? lastPrice)
+        private void UpdateDataGridView(string exchange, string symbol, ExchangeRate data)
         {
             foreach (DataGridViewRow row in dataGridViewRates.Rows)
             {
                 if (row.Cells["Exchange"].Value != null && row.Cells["Exchange"].Value?.ToString() == exchange)
                 {
-                    row.Cells["LastPrice"].Value = lastPrice?.ToString("N2");
+                    row.Cells["LastPrice"].Value = data.LastPrice?.ToString("N2");
+                    row.Cells["LowPriceH24"].Value = data.LowPriceH24?.ToString("N2");
+                    row.Cells["HighPriceH24"].Value = data.HighPriceH24?.ToString("N2");
                     return;
                 }
             }
-            dataGridViewRates.Rows.Add(exchange, symbol, lastPrice?.ToString("N2"));
+            dataGridViewRates.Rows.Add(exchange, symbol, data.LastPrice?.ToString("N2"), data.LowPriceH24?.ToString("N2"),
+                data.HighPriceH24?.ToString("N2"));
         }
         private string ConcatSymbol(string firstSymbol, string secondSymbol, string exchange)
         {

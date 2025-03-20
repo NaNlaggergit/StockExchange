@@ -36,7 +36,12 @@ namespace StockExchange.Api
 
             private ExchangeRate CreateExchangeRate(Bitget.Net.Objects.Models.BitgetTickerUpdate data)
             {
-                return new ExchangeRate { LastPrice = data.LastPrice };
+                return new ExchangeRate
+                {
+                    LastPrice = data.LastPrice,
+                    LowPriceH24 = data.LowPrice24h,
+                    HighPriceH24 = data.HighPrice24h,
+                };
             }
 
             private ExchangeRate CreateExchangeRate(Bitget.Net.Objects.Models.BitgetTicker data)
@@ -56,8 +61,14 @@ namespace StockExchange.Api
                 return null;
             }
 
-            public async Task SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
+            public async Task<Result> SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
             {
+                Result result = new Result();
+                if (_subscriptionId != null)
+                {
+                    result.Error = "Уже подписанны";
+                    return result;
+                }
                 var subscription = await _socketClient.SpotApi.SubscribeToTickerUpdatesAsync(symbol, data =>
                 {
                     HandleTickerUpdate(symbol, onPriceUpdate, data.Data);
@@ -65,7 +76,15 @@ namespace StockExchange.Api
 
                 if (subscription.Success)
                 {
+                    result.IsSuccess = true;
                     _subscriptionId = subscription.Data.Id;
+                    return result;
+                }
+                else
+                {
+                    result.Error = subscription.Error.Message;
+                    _subscriptionId = null;
+                    return result;
                 }
             }
 

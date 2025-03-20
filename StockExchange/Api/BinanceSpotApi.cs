@@ -25,7 +25,12 @@ namespace StockExchange.Api
 
         private ExchangeRate CreateExchangeRate(Binance.Net.Interfaces.IBinanceTick data)
         {
-            return new ExchangeRate { LastPrice = data.LastPrice };
+            return new ExchangeRate {
+                LastPrice = data.LastPrice,
+                LowPriceH24 = data.LowPrice,
+                HighPriceH24 =data.HighPrice,
+            };
+            
         }
 
         public async Task<ExchangeRate> GetPriceAsync(string symbol)
@@ -40,11 +45,13 @@ namespace StockExchange.Api
             return null;
         }
 
-        public async Task SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
+        public async Task<Result> SubscribeToPriceUpdatesAsync(string symbol, Action<ExchangeRate> onPriceUpdate)
         {
+            Result result=new Result();
             if (_subscriptionId != null)
             {
-                return;
+                result.Error = "Уже подписаны";
+                return result;
             }
             var subscription = await _socketClient.SpotApi.ExchangeData.SubscribeToTickerUpdatesAsync(symbol, data =>
             {
@@ -53,7 +60,15 @@ namespace StockExchange.Api
 
             if (subscription.Success)
             {
+                result.IsSuccess = true;
                 _subscriptionId = subscription.Data.Id;
+                return result;
+            }
+            else
+            {
+                result.Error = subscription.Error.Message;
+                _subscriptionId = null;
+                return result;
             }
         }
 
